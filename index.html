@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tra cứu Dữ liệu GIS — Lưu vực Mekong & Việt Nam</title>
+<style>
+  :root{
+    --bg:#f1f5f9;
+    --card:#ffffff;
+    --text:#0f172a;
+    --muted:#64748b;
+    --line:#e2e8f0;
+    --accent:#0ea5e9;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(15,23,42,.06), 0 8px 24px -12px rgba(15,23,42,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter','Segoe UI',system-ui,-apple-system,'Helvetica Neue',Arial,sans-serif;
+    background:var(--bg);
+    color:var(--text);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- HEADER ---------- */
+  header{
+    position:relative;
+    background:linear-gradient(135deg,#0c4a6e 0%,#0369a1 45%,#0891b2 100%);
+    color:#fff;
+    padding:52px 20px 96px;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute;left:0;right:0;bottom:-1px;height:70px;
+    background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 80' preserveAspectRatio='none'%3E%3Cpath fill='%23f1f5f9' d='M0,40 C240,90 480,-10 720,40 C960,90 1200,-10 1440,40 L1440,80 L0,80 Z'/%3E%3C/svg%3E") no-repeat center/100% 100%;
+  }
+  .head-inner{max-width:1120px;margin:0 auto;position:relative;z-index:1}
+  .badge-top{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(255,255,255,.16);
+    border:1px solid rgba(255,255,255,.28);
+    padding:6px 14px;border-radius:999px;
+    font-size:12.5px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;
+    backdrop-filter:blur(6px);
+  }
+  header h1{
+    font-size:clamp(26px,4.4vw,42px);
+    font-weight:800;letter-spacing:-.5px;margin:16px 0 10px;line-height:1.2;
+  }
+  header p{max-width:660px;color:#dbeafe;font-size:15.5px}
+
+  /* ---------- TOOLBAR ---------- */
+  main{max-width:1120px;margin:0 auto;padding:0 20px 70px}
+  .toolbar{
+    margin-top:-58px;position:relative;z-index:5;
+    background:var(--card);border-radius:var(--radius);
+    box-shadow:var(--shadow);border:1px solid var(--line);
+    padding:18px;
+  }
+  .search-wrap{position:relative}
+  .search-wrap svg{
+    position:absolute;left:16px;top:50%;transform:translateY(-50%);
+    width:19px;height:19px;stroke:var(--muted);fill:none;stroke-width:2.2;
+  }
+  #search{
+    width:100%;padding:14px 46px 14px 46px;
+    border:1.5px solid var(--line);border-radius:11px;
+    font-size:15px;font-family:inherit;color:var(--text);
+    background:#f8fafc;outline:none;transition:.18s;
+  }
+  #search:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 4px rgba(14,165,233,.12)}
+  #clear{
+    position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    border:0;background:#e2e8f0;color:#475569;
+    width:26px;height:26px;border-radius:50%;cursor:pointer;
+    display:none;font-size:15px;line-height:1;font-family:inherit;
+  }
+  #clear:hover{background:#cbd5e1}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip{
+    border:1.5px solid var(--line);background:#fff;color:#334155;
+    padding:7px 15px;border-radius:999px;cursor:pointer;
+    font-size:13.5px;font-weight:600;font-family:inherit;
+    transition:.16s;display:inline-flex;align-items:center;gap:6px;
+  }
+  .chip:hover{border-color:#94a3b8;background:#f8fafc}
+  .chip.active{background:#0f172a;border-color:#0f172a;color:#fff}
+  .chip .dot{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.85}
+  .chip.active .dot{background:#fff}
+
+  /* ---------- STATS ---------- */
+  .stats{
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:10px;margin:26px 2px 16px;
+    font-size:14px;color:var(--muted);
+  }
+  .stats strong{color:var(--text);font-weight:700}
+  .hint{font-size:12.5px;color:#94a3b8}
+  .hint kbd{
+    background:#fff;border:1px solid var(--line);border-bottom-width:2px;
+    border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11.5px;color:#475569;
+  }
+
+  /* ---------- GRID ---------- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:20px 20px 18px;box-shadow:var(--shadow);
+    position:relative;overflow:hidden;
+    display:flex;flex-direction:column;
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s;
+  }
+  .card::before{
+    content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+    background:var(--accent);
+  }
+  .card:hover{transform:translateY(-3px);border-color:#cbd5e1;box-shadow:0 4px 8px rgba(15,23,42,.07),0 16px 32px -14px rgba(15,23,42,.28)}
+
+  .card-head{display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
+  .icon{
+    flex:0 0 42px;width:42px;height:42px;border-radius:11px;
+    display:grid;place-items:center;font-size:21px;
+    background:color-mix(in srgb, var(--accent) 13%, #fff);
+    border:1px solid color-mix(in srgb, var(--accent) 25%, #fff);
+  }
+  .titles{min-width:0;flex:1}
+  .card h3{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.2px}
+  .cat{
+    display:inline-block;margin-top:5px;
+    font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--accent);
+  }
+  .desc{font-size:14px;color:#475569;margin-bottom:12px}
+  .hl{
+    font-size:13.2px;color:#334155;background:#f8fafc;
+    border:1px dashed var(--line);border-left:3px solid var(--accent);
+    border-radius:9px;padding:10px 12px;margin-bottom:14px;
+  }
+  .hl b{color:var(--text);font-weight:700}
+
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:15px}
+  .tag{
+    font-size:11.5px;font-weight:600;color:#475569;background:#f1f5f9;
+    border:1px solid var(--line);border-radius:6px;padding:3px 8px;white-space:nowrap;
+  }
+
+  .links{margin-top:auto;display:flex;flex-wrap:wrap;gap:8px}
+  .links a{
+    display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;font-weight:600;text-decoration:none;
+    padding:8px 13px;border-radius:9px;
+    background:var(--accent);color:#fff;
+    transition:.16s;border:1.5px solid var(--accent);
+  }
+  .links a:hover{filter:brightness(1.08);transform:translateY(-1px)}
+  .links a.ghost{background:#fff;color:var(--accent)}
+  .links a.ghost:hover{background:color-mix(in srgb, var(--accent) 8%, #fff)}
+  .links a svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.4}
+
+  .nolink{font-size:12.5px;color:#94a3b8;font-style:italic}
+
+  /* ---------- EMPTY ---------- */
+  .empty{
+    grid-column:1/-1;text-align:center;padding:70px 20px;color:var(--muted);
+    background:#fff;border:1px dashed var(--line);border-radius:var(--radius);
+  }
+  .empty .big{font-size:42px;margin-bottom:10px}
+  .empty p{font-size:15px}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    border-top:1px solid var(--line);background:#fff;
+    padding:30px 20px;text-align:center;color:var(--muted);font-size:13px;
+  }
+  footer .note{max-width:760px;margin:0 auto 8px}
+  footer b{color:#334155}
+
+  @media (max-width:600px){
+    header{padding:38px 18px 88px}
+    .toolbar{padding:14px}
+    .grid{grid-template-columns:1fr}
+    .stats{font-size:13px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="head-inner">
+    <span class="badge-top">🌊 Cổng tra cứu dữ liệu</span>
+    <h1>Dữ liệu GIS lưu vực Mekong & Việt Nam</h1>
+    <p>Tổng hợp các trang web, cổng dữ liệu mở và công cụ tra cứu bản đồ cho khu vực Mekong và 6 quốc gia: Việt Nam, Lào, Thái Lan, Campuchia, Myanmar, Trung Quốc (thượng nguồn).</p>
+  </div>
+</header>
+
+<main>
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="search" type="text" autocomplete="off"
+             placeholder="Tìm theo tên, mô tả, thẻ… (vd: thủy văn, MRC, bản đồ, vệ tinh)">
+      <button id="clear" title="Xóa">✕</button>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="stats">
+    <span id="count"></span>
+    <span class="hint">Nhấn <kbd>/</kbd> để tìm nhanh · <kbd>Esc</kbd> để xóa</span>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  <p class="note"><b>Lưu ý:</b> Hầu hết nguồn dữ liệu là dữ liệu mở — vui lòng kiểm tra giấy phép và trích dẫn nguồn theo yêu cầu của từng bộ dữ liệu. Khi dùng dữ liệu quốc tế, cần đối chiếu và đánh giá các vấn đề liên quan đến chủ quyền, toàn vẹn lãnh thổ.</p>
+  <p class="note">Long Ngo sưu tầm, MIT 2026</p>
+</footer>
+
+<script>
+/* =========================================================
+   DANH MỤC NGUỒN DỮ LIỆU
+   ========================================================= */
+const CATS = {
+  regional: { label:'Khu vực Mekong', color:'#0ea5e9' },
+  vietnam:  { label:'Việt Nam',       color:'#da251d' },
+  china:    { label:'Trung Quốc',     color:'#dc2626' },
+  laos:     { label:'Lào',            color:'#7c3aed' },
+  thailand: { label:'Thái Lan',       color:'#2563eb' },
+  cambodia: { label:'Campuchia',      color:'#059669' },
+  myanmar:  { label:'Myanmar',        color:'#d97706' }
+};
+
+const DATA = [
+
+  /* ============ KHU VỰC MEKONG ============ */
+  {
+    cat:'regional', icon:'🌐',
+    name:'Open Development Mekong (ODM)',
+    desc:'Một trong những nguồn dữ liệu mở phong phú nhất, tổng hợp thông tin từ Việt Nam, Campuchia, Lào, Myanmar và Thái Lan.',
+    highlight:'Hơn <b>1.100 bộ dữ liệu</b> về thủy văn, môi trường, kinh tế – xã hội, dân số… Dữ liệu cung cấp dưới dạng dịch vụ web chuẩn <b>OGC WFS, WMS</b>, rất thuận tiện để tích hợp vào ứng dụng bản đồ.',
+    tags:['Dữ liệu mở','WFS / WMS','Đa quốc gia'],
+    links:[
+      {label:'Trang chính', url:'https://opendevelopmentmekong.net/'},
+      {label:'Cổng dữ liệu (DataHub)', url:'https://data.opendevelopmentmekong.net/', ghost:true}
+    ]
+  },
+  {
+    cat:'regional', icon:'🏛️',
+    name:'Ủy hội sông Mekong (MRC)',
+    desc:'Tổ chức liên chính phủ quản lý và điều phối các hoạt động trên lưu vực sông Mekong, sở hữu kho dữ liệu lịch sử lâu đời và chính thống.',
+    highlight:'Hơn <b>10.000 bộ dữ liệu</b> gồm thủy văn, khí tượng, chất lượng nước, thủy sản và bản đồ không gian. Công cụ <b>MRC Toolbox</b> tích hợp sẵn trình xem GIS và cơ sở tri thức để phân tích dữ liệu.',
+    tags:['Liên chính phủ','Thủy văn','Bản đồ không gian'],
+    links:[
+      {label:'Cổng thông tin dữ liệu', url:'https://portal.mrcmekong.org/'},
+      {label:'Atlas tương tác', url:'https://geo.mrcmekong.org', ghost:true}
+    ]
+  },
+  {
+    cat:'regional', icon:'🧰',
+    name:'MRC Toolbox',
+    desc:'Hệ thống máy tính tiên tiến của MRC, tích hợp GIS Viewer cho phép tìm kiếm dữ liệu chuỗi thời gian và các định dạng GIS chuẩn theo vị trí trên bản đồ.',
+    highlight:'Bao gồm một <b>Knowledge Base</b> chứa cơ sở dữ liệu, mô hình và báo cáo. Truy cập qua cổng thông tin của MRC.',
+    tags:['Công cụ GIS','Chuỗi thời gian','Knowledge Base'],
+    links:[
+      {label:'Truy cập qua MRC Portal', url:'https://portal.mrcmekong.org/'}
+    ]
+  },
+  {
+    cat:'regional', icon:'🛰️',
+    name:'SERVIR-Mekong',
+    desc:'Chương trình hợp tác giữa NASA và USAID, tập trung vào việc ứng dụng dữ liệu vệ tinh và công nghệ GIS để giải quyết các thách thức về môi trường và biến đổi khí hậu.',
+    highlight:'Cung cấp các bộ dữ liệu chuyên sâu: <b>bản đồ lớp phủ đất</b>, <b>dự báo hạn hán</b>, <b>công cụ lập bản đồ ngập lụt</b> và <b>mô hình số độ cao (DEM)</b>.',
+    tags:['NASA / USAID','Viễn thám','DEM','Hạn hán'],
+    links:[
+      {label:'Trang chính', url:'https://servir.adpc.net/'}
+    ]
+  },
+  {
+    cat:'regional', icon:'💧',
+    name:'Mekong Dam Monitor',
+    desc:'Nền tảng chuyên theo dõi hoạt động của các đập thủy điện, sử dụng dữ liệu viễn thám và phân tích GIS để cung cấp thông tin gần như theo thời gian thực.',
+    highlight:'Dữ liệu và bản đồ cập nhật <b>hàng tuần</b>, cho phép tải xuống miễn phí, bao gồm các chỉ số về dòng chảy tự nhiên và tình trạng hồ chứa.',
+    tags:['Đập thủy điện','Thời gian thực','Miễn phí'],
+    links:[
+      {label:'Trang dự án (Stimson)', url:'https://www.stimson.org/project/mekong-dam-monitor/'}
+    ]
+  },
+  {
+    cat:'regional', icon:'🏗️',
+    name:'Mekong Infrastructure Tracker',
+    desc:'Bảng điều khiển (dashboard) tương tác cho phép tìm kiếm và truy cập thông tin về các dự án cơ sở hạ tầng năng lượng và giao thông trên khắp tiểu vùng Mekong mở rộng.',
+    highlight:'Cung cấp <b>tọa độ địa lý</b> và chi tiết dự án cho đường bộ, đường sắt và đường thủy.',
+    tags:['Dashboard','Hạ tầng','Năng lượng','Giao thông'],
+    links:[
+      {label:'Truy cập qua Stimson Center', url:'https://www.stimson.org/'}
+    ]
+  },
+  {
+    cat:'regional', icon:'🗺️',
+    name:'Greater Mekong Subregion (GMS)',
+    desc:'Nguồn dữ liệu tập trung vào phạm vi rộng lớn hơn của Tiểu vùng sông Mekong mở rộng.',
+    highlight:'Cung cấp các lớp dữ liệu về <b>sân bay, đường giao thông, thủy văn, năng lượng</b> và các dự án phát triển khu vực, thường ở định dạng <b>Shapefile</b> và <b>KMZ</b>.',
+    tags:['Shapefile','KMZ','Hạ tầng','Phát triển khu vực'],
+    links:[
+      {label:'Thư viện dữ liệu địa lý', url:'https://greatermekong.org/geodata-library'}
+    ]
+  },
+  {
+    cat:'regional', icon:'🆘',
+    name:'Humanitarian Data Exchange (HDX)',
+    desc:'Nguồn dữ liệu nhân đạo toàn cầu, cung cấp các bộ dữ liệu quan trọng cho khu vực Mekong và từng quốc gia.',
+    highlight:'Bao gồm <b>ranh giới hành chính</b>, <b>cơ sở hạ tầng</b> và <b>dữ liệu dân số</b>.',
+    tags:['Nhân đạo','Ranh giới hành chính','Dân số'],
+    links:[
+      {label:'Trang chính', url:'https://data.humdata.org/'}
+    ]
+  },
+
+
+  /* ============ VIỆT NAM ============ */
+  {
+    cat:'vietnam', icon:'🇻🇳',
+    name:'Cổng thông tin không gian địa lý Việt Nam (VNSDI)',
+    desc:'Cổng thông tin không gian địa lý quốc gia do Cục Đo đạc, Bản đồ và Thông tin địa lý Việt Nam xây dựng và vận hành.',
+    highlight:'Đầu mối truy cập <b>dữ liệu không gian địa lý quốc gia</b>, gồm dữ liệu nền địa lý, bản đồ địa hình, mạng lưới đo đạc, ảnh hàng không – viễn thám, địa danh, biên giới và địa giới hành chính.',
+    tags:['NSDI','Nền địa lý','Bản đồ địa hình','Viễn thám'],
+    links:[
+      {label:'Truy cập VNSDI', url:'https://vnsdi.mae.gov.vn/'},
+      {label:'Cục Đo đạc & Bản đồ', url:'https://dosmvn.mae.gov.vn/', ghost:true}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'🗺️',
+    name:'MAE-INFO — Thông tin Nông nghiệp & Môi trường',
+    desc:'Hệ thống tra cứu dữ liệu chuyên ngành của Bộ Nông nghiệp và Môi trường, trình bày thông tin trên nền bản đồ và hỗ trợ sử dụng trên máy tính, điện thoại.',
+    highlight:'Phù hợp để tra cứu dữ liệu theo <b>cấp quốc gia, địa phương và vị trí cụ thể</b>, kết hợp các chủ đề nông nghiệp, môi trường và quản lý tài nguyên.',
+    tags:['Nông nghiệp','Môi trường','WebGIS','Tra cứu bản đồ'],
+    links:[
+      {label:'Truy cập MAE-INFO', url:'https://thongtinnnmt.mae.gov.vn/'}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'🌧️',
+    name:'VNDMS — Hệ thống giám sát thiên tai Việt Nam',
+    desc:'Nền tảng giám sát và trực quan hóa thông tin thiên tai của cơ quan phòng, chống thiên tai Việt Nam.',
+    highlight:'Có các lớp/bản đồ phục vụ giám sát như <b>mưa, radar, gió, xâm nhập mặn</b> và danh sách sự kiện thiên tai; hữu ích cho theo dõi rủi ro tại ĐBSCL và các lưu vực sông.',
+    tags:['Thiên tai','Radar','Xâm nhập mặn','Giám sát'],
+    links:[
+      {label:'Mở VNDMS', url:'https://vndms.gov.vn/'},
+      {label:'Trung tâm PCTT', url:'https://dmc.gov.vn/', ghost:true}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'⛈️',
+    name:'Trung tâm Dự báo Khí tượng Thủy văn Quốc gia (NCHMF)',
+    desc:'Nguồn chính thức về dự báo, cảnh báo khí tượng thủy văn trên phạm vi Việt Nam.',
+    highlight:'Cung cấp <b>bản đồ mưa, radar, vệ tinh, mô hình</b>, cảnh báo lũ, ngập, lũ quét – sạt lở và các bản tin thủy văn cho <b>sông Cửu Long</b> cùng nhiều lưu vực khác.',
+    tags:['KTTV','Mưa','Lũ','Sông Cửu Long'],
+    links:[
+      {label:'Truy cập NCHMF', url:'https://nchmf.gov.vn/'},
+      {label:'Cảnh báo lũ quét / sạt lở', url:'http://luquetsatlo.nchmf.gov.vn/', ghost:true}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'💦',
+    name:'NAWAPI — Quy hoạch & Điều tra tài nguyên nước quốc gia',
+    desc:'Trung tâm Quy hoạch và Điều tra tài nguyên nước quốc gia cung cấp thông tin điều tra, quan trắc, quy hoạch và dự báo tài nguyên nước.',
+    highlight:'Có <b>bản đồ mạng lưới trạm quan trắc</b>, bản tin cảnh báo – dự báo nguồn nước theo lưu vực, trong đó có <b>lưu vực sông Cửu Long</b>; đồng thời phát triển các ứng dụng GIS, AI và quan trắc số.',
+    tags:['Tài nguyên nước','Quan trắc','Lưu vực sông','GIS'],
+    links:[
+      {label:'Truy cập NAWAPI', url:'https://www.nawapi.gov.vn/'}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'🌾',
+    name:'MD-WADS — Cơ sở dữ liệu ngành nước Đồng bằng sông Cửu Long',
+    desc:'Hệ thống WebGIS/CSDL ngành nước vùng ĐBSCL, được phát triển để tăng cường chia sẻ dữ liệu liên tỉnh và liên ngành.',
+    highlight:'Tích hợp <b>khí tượng thủy văn, mực nước, lưu lượng, độ mặn, lượng mưa, chất lượng nước, công trình thủy lợi, trạm quan trắc, giao thông và sử dụng đất</b>. Giao diện WebGIS hỗ trợ tra cứu theo tỉnh, tiểu vùng và chủ đề.',
+    tags:['ĐBSCL','WebGIS','Độ mặn','Thủy lợi','Chuỗi thời gian'],
+    links:[
+      {label:'Truy cập MD-WADS', url:'https://csdl-nguonnuoc.mkdc.com.vn/'}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'📂',
+    name:'Open Development Vietnam (ODV)',
+    desc:'Cổng dữ liệu mở và tri thức mở của Việt Nam thuộc mạng lưới Open Development Mekong.',
+    highlight:'Kho dữ liệu Việt Nam hỗ trợ nhiều chủ đề phát triển; các bộ dữ liệu không gian có thể xuất hiện dưới dạng <b>Shapefile, KML, GeoJSON, WMS</b> và được dùng trực tiếp trong quy trình GIS/WebGIS.',
+    tags:['Dữ liệu mở','GeoJSON','KML','WMS'],
+    links:[
+      {label:'Trang dữ liệu ODV', url:'https://vietnam.opendevelopmentmekong.net/vi/data/'},
+      {label:'OD Mekong DataHub', url:'https://data.vietnam.opendevelopmentmekong.net/vi/dataset/?dataset_type=dataset&odm_spatial_range_list=vn&type=dataset', ghost:true}
+    ]
+  },
+  {
+    cat:'vietnam', icon:'🏞️',
+    name:'Dữ liệu thủy văn & DEM Việt Nam — OD Mekong DataHub',
+    desc:'Các bộ dữ liệu GIS thực dụng cho phân tích lưu vực và xây dựng WebGIS Việt Nam, được phát hành qua Open Development Vietnam.',
+    highlight:'Có thể tra cứu <b>mạng lưới sông suối</b> với GeoJSON/KML/Shapefile/WMS và lớp <b>DEM</b> WMS; thuận tiện để dựng nền phân tích thủy văn, dòng chảy và địa hình.',
+    tags:['Sông suối','DEM','WMS','GeoJSON'],
+    links:[
+      {label:'Mạng lưới thủy văn', url:'https://data.opendevelopmentmekong.net/vi/dataset/mng-li-thy-vn'},
+      {label:'DEM Việt Nam', url:'https://data.vietnam.opendevelopmentmekong.net/dataset/dem', ghost:true}
+    ]
+  },
+
+  /* ============ TRUNG QUỐC ============ */
+  {
+    cat:'china', icon:'🇨🇳',
+    name:'Trung tâm Dữ liệu Khoa học Quốc gia (Trung Quốc)',
+    desc:'Cổng dữ liệu quốc gia của Trung Quốc, tập trung vào phần thượng nguồn của dòng sông (Lancang – Mekong).',
+    highlight:'Cung cấp các bộ dữ liệu như <b>quan trắc lưu lượng dòng chảy</b>, <b>mạng lưới sông</b>, và các đặc trưng về dân tộc, chính trị.',
+    tags:['Thượng nguồn','Lưu lượng','Mạng lưới sông'],
+    links:[
+      {label:'Truy cập', url:'https://www.geodata.cn/'}
+    ]
+  },
+  {
+    cat:'china', icon:'🇨🇳',
+    name:'Trung tâm Dữ liệu Khoa học Thái Bình Dương (TPDC)',
+    desc:'Cổng dữ liệu chuyên sâu về lưu vực sông Lancang – Mekong (phần thượng nguồn).',
+    highlight:'Cung cấp dữ liệu <b>mạng lưới thoát nước</b> gồm hướng dòng chảy và tích lũy dòng chảy của lưu vực Lancang – Mekong.',
+    tags:['Thượng nguồn','Hướng dòng chảy','Tích lũy dòng chảy'],
+    links:[
+      {label:'Truy cập', url:'https://data.tpdc.ac.cn/'}
+    ]
+  },
+
+  /* ============ LÀO ============ */
+  {
+    cat:'laos', icon:'🇱🇦',
+    name:'K4D — Không gian Thông tin Phát triển Quốc gia',
+    desc:'Nền tảng chính thức của Chính phủ Lào, do Bộ Nông nghiệp và Lâm nghiệp quản lý, cung cấp công cụ để khám phá, truy vấn, phân tích và tải xuống dữ liệu không gian địa lý.',
+    highlight:'<b>Map explorer</b> — bản đồ tương tác cho phép duyệt và khám phá phân bố địa lý của dữ liệu theo chủ đề. <b>Map analyst</b> — cho phép vẽ vùng quan tâm (AOI) để phân tích.',
+    tags:['Chính phủ Lào','Map explorer','AOI'],
+    links:[
+      {label:'Truy cập K4D', url:'https://k4d.gov.la/'}
+    ]
+  },
+  {
+    cat:'laos', icon:'🇱🇦',
+    name:'Open Development Laos',
+    desc:'Cổng dữ liệu mở về Lào, thuộc mạng lưới Open Development Mekong.',
+    highlight:'Cung cấp các bộ dữ liệu GIS về <b>địa điểm du lịch</b>, <b>sân bay tiểu vùng Mekong mở rộng</b>, <b>cơ sở giáo dục đại học</b> và <b>mạng lưới đường bộ</b>.',
+    tags:['Dữ liệu mở','Du lịch','Giáo dục','Đường bộ'],
+    links:[
+      {label:'Truy cập', url:'https://laos.opendevelopmentmekong.net/'}
+    ]
+  },
+  {
+    cat:'laos', icon:'🇱🇦',
+    name:'Lao DECIDE Info',
+    desc:'Sáng kiến của Chính phủ Lào nhằm cải thiện khả năng tiếp cận dữ liệu cho hoạch định chính sách.',
+    highlight:'Lưu trữ thông tin từ các lĩnh vực <b>xã hội, kinh tế, môi trường và nông nghiệp</b>; cho phép điều hướng, trực quan hóa và tải xuống dữ liệu.',
+    tags:['Chính sách','Xã hội','Kinh tế','Nông nghiệp'],
+    links:[
+      {label:'Truy cập', url:'https://laodecide.info/'}
+    ]
+  },
+
+  /* ============ THÁI LAN ============ */
+  {
+    cat:'thailand', icon:'🇹🇭',
+    name:'GISTDA Sphere',
+    desc:'Nền tảng kỹ thuật số toàn diện về bản đồ và thông tin địa lý do Cơ quan Phát triển Công nghệ Vũ trụ và Địa tin học (GISTDA) phát triển.',
+    highlight:'Cung cấp <b>Map APIs</b>, công cụ tạo bản đồ trực tuyến, công cụ trích xuất dữ liệu từ ảnh vệ tinh và <b>bản đồ 3D</b>. Có thể dùng thử miễn phí.',
+    tags:['API','Bản đồ 3D','Vệ tinh'],
+    links:[
+      {label:'Dùng thử miễn phí', url:'https://sphere.gistda.or.th/'}
+    ]
+  },
+  {
+    cat:'thailand', icon:'🇹🇭',
+    name:'Cổng dữ liệu mở GISTDA',
+    desc:'Cổng dữ liệu mở của GISTDA, cung cấp quyền truy cập các bộ dữ liệu dưới dạng API.',
+    highlight:'Bao gồm dữ liệu về các loại thảm họa như <b>cháy rừng, lũ lụt, hạn hán</b> và thông tin về <b>các nguồn nước nhỏ</b>.',
+    tags:['API','Thảm họa','Cháy rừng','Lũ lụt'],
+    links:[
+      {label:'Truy cập GISTDA', url:'https://www.gistda.or.th/'}
+    ]
+  },
+  {
+    cat:'thailand', icon:'🇹🇭',
+    name:'DOH One Map — Cục Đường bộ Thái Lan',
+    desc:'Hệ thống thông tin địa lý của Cục Đường bộ Thái Lan (Department of Highways).',
+    highlight:'Cho phép <b>tải xuống dữ liệu về mạng lưới đường bộ</b> và các tài liệu tiêu chuẩn liên quan.',
+    tags:['Đường bộ','Hạ tầng','Tải xuống'],
+    links:[
+      {label:'Truy cập One Map', url:'https://onemap.doh.go.th'}
+    ]
+  },
+  {
+    cat:'thailand', icon:'🇹🇭',
+    name:'Cổng Dữ liệu Mở Chính phủ Thái Lan (GDCC)',
+    desc:'Cổng dữ liệu mở quốc gia của Thái Lan, cung cấp quyền truy cập vào các bộ dữ liệu GIS từ nhiều cơ quan chính phủ.',
+    highlight:'Bao gồm thông tin về <b>mạng lưới đường bộ, cầu, địa điểm công cộng</b> và các vấn đề môi trường như <b>ô nhiễm PM2.5</b>.',
+    tags:['Dữ liệu mở','Chính phủ','PM2.5'],
+    links:[
+      {label:'Truy cập', url:'https://data.go.th/'}
+    ]
+  },
+
+  /* ============ CAMPUCHIA ============ */
+  {
+    cat:'cambodia', icon:'🇰🇭',
+    name:'CEMIS — Hệ thống Thông tin Quản lý Môi trường Campuchia',
+    desc:'Nền tảng dữ liệu không gian trung tâm đang được Bộ Môi trường Campuchia phát triển để quản lý và phân phối thông tin môi trường.',
+    highlight:'Điểm truy cập dữ liệu chính là một <b>cổng thông tin địa lý (geoportal)</b> cho phép tìm kiếm các bộ dữ liệu môi trường có sẵn.',
+    tags:['Môi trường','Geoportal','Bộ Môi trường'],
+    links:[]
+  },
+  {
+    cat:'cambodia', icon:'🇰🇭',
+    name:'Open Development Cambodia (ODC)',
+    desc:'Cổng dữ liệu mở tổng hợp và lập bản đồ dữ liệu mở để làm sáng tỏ các xu hướng phát triển của Campuchia.',
+    highlight:'Cung cấp hơn <b>1.100 bộ dữ liệu</b> đa lĩnh vực, có thể tải xuống và kết nối qua dịch vụ web.',
+    tags:['Dữ liệu mở','Đa lĩnh vực','Bản đồ'],
+    links:[
+      {label:'Truy cập ODC', url:'https://opendevelopmentcambodia.net/'}
+    ]
+  },
+  {
+    cat:'cambodia', icon:'🇰🇭',
+    name:'DGIS — Cục Dịch vụ Thông tin Địa không gian',
+    desc:'Đơn vị thuộc Bộ Môi trường Campuchia, quản lý cổng thông tin trung tâm cung cấp cơ sở dữ liệu và thông tin địa không gian môi trường.',
+    highlight:'Cung cấp dữ liệu <b>đáng tin cậy</b> phục vụ các quyết định về môi trường và tài nguyên.',
+    tags:['Địa không gian','Môi trường','Chính phủ'],
+    links:[]
+  },
+
+  /* ============ MYANMAR ============ */
+  {
+    cat:'myanmar', icon:'🇲🇲',
+    name:'MIMU — Đơn vị Quản lý Thông tin Myanmar',
+    desc:'Nguồn cung cấp chính các nguồn lực bản đồ và GIS ở Myanmar, duy trì kho dữ liệu chung với dữ liệu từ nhiều nguồn khác nhau.',
+    highlight:'Cung cấp <b>công cụ lập bản đồ email</b>, <b>Interactive Map Maker</b> để tạo bản đồ chi tiết, và một <b>kho dữ liệu GIS mở</b> (qua GeoNode) cho phép tải xuống nhiều loại dữ liệu GIS.',
+    tags:['GeoNode','Interactive Map Maker','Dữ liệu mở'],
+    links:[
+      {label:'Trang GIS Resources', url:'https://themimu.info/gis-resources'}
+    ]
+  },
+  {
+    cat:'myanmar', icon:'🇲🇲',
+    name:'One Map Myanmar',
+    desc:'Hệ thống cổng thông tin địa lý quốc gia được thiết kế để duy trì và chia sẻ thông tin tập trung cho toàn quốc bằng cách hợp nhất dữ liệu từ các bộ phận khác nhau.',
+    highlight:'Hệ thống được xây dựng trên nền tảng <b>ArcGIS Enterprise</b>.',
+    tags:['ArcGIS Enterprise','Cổng quốc gia','Hợp nhất dữ liệu'],
+    links:[]
+  },
+  {
+    cat:'myanmar', icon:'🇲🇲',
+    name:'WISDM — Hệ thống Thông tin Nước Myanmar',
+    desc:'Được phát triển bởi IWMI (Viện Quản lý Nước Quốc tế), cổng dữ liệu này cung cấp quyền truy cập vào nhiều loại dữ liệu không gian.',
+    highlight:'Tập trung vào <b>thông tin liên quan đến nước</b> và các dữ liệu không gian phục vụ quản lý tài nguyên nước.',
+    tags:['IWMI','Tài nguyên nước','Không gian'],
+    links:[]
+  }
+];
+
+/* =========================================================
+   RENDER + TÌM KIẾM
+   ========================================================= */
+const grid   = document.getElementById('grid');
+const search = document.getElementById('search');
+const clear  = document.getElementById('clear');
+const chips  = document.getElementById('chips');
+const countEl= document.getElementById('count');
+
+let activeCat = 'all';
+
+/* Bỏ dấu tiếng Việt để tìm kiếm dễ hơn */
+function normalize(s){
+  return (s || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd');
+}
+
+/* Tạo nút lọc */
+function buildChips(){
+  const items = [{key:'all', label:'Tất cả', color:'#0f172a'}];
+  for (const [key, v] of Object.entries(CATS)){
+    items.push({key, label:v.label, color:v.color});
+  }
+  chips.innerHTML = items.map(it => `
+    <button class="chip${it.key===activeCat?' active':''}" data-cat="${it.key}">
+      <span class="dot" style="${it.key==='all'?'':`background:${it.color}`}"></span>${it.label}
+    </button>
+  `).join('');
+
+  chips.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeCat = btn.dataset.cat;
+      chips.querySelectorAll('.chip').forEach(b => b.classList.toggle('active', b===btn));
+      render();
+    });
+  });
+}
+
+/* SVG icon mở link */
+const ICON_EXT = `<svg viewBox="0 0 24 24"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>`;
+
+/* Tạo 1 card */
+function cardHTML(item){
+  const color = CATS[item.cat].color;
+  const catLabel = CATS[item.cat].label;
+
+  const links = (item.links && item.links.length)
+    ? item.links.map((l,i) =>
+        `<a href="${l.url}" target="_blank" rel="noopener" class="${l.ghost||i>0?'ghost':''}">
+           ${ICON_EXT} ${l.label}
+         </a>`).join('')
+    : `<span class="nolink">Chưa có liên kết trực tiếp — tra cứu qua cơ quan chủ quản</span>`;
+
+  const tags = item.tags.map(t => `<span class="tag">${t}</span>`).join('');
+
+  return `
+    <article class="card" style="--accent:${color}">
+      <div class="card-head">
+        <div class="icon">${item.icon}</div>
+        <div class="titles">
+          <h3>${item.name}</h3>
+          <span class="cat" style="color:${color}">${catLabel}</span>
+        </div>
+      </div>
+      <p class="desc">${item.desc}</p>
+      <div class="hl">${item.highlight}</div>
+      <div class="tags">${tags}</div>
+      <div class="links">${links}</div>
+    </article>
+  `;
+}
+
+/* Render theo bộ lọc + từ khóa */
+function render(){
+  const q = normalize(search.value.trim());
+
+  const filtered = DATA.filter(item => {
+    if (activeCat !== 'all' && item.cat !== activeCat) return false;
+    if (!q) return true;
+    const haystack = normalize([
+      item.name, item.desc, item.highlight,
+      item.tags.join(' '),
+      CATS[item.cat].label,
+      (item.links||[]).map(l=>l.label).join(' ')
+    ].join(' '));
+    return haystack.includes(q);
+  });
+
+  countEl.innerHTML = `Tìm thấy <strong>${filtered.length}</strong> nguồn dữ liệu`
+    + (activeCat!=='all' ? ` trong <strong>${CATS[activeCat].label}</strong>` : '');
+
+  if (!filtered.length){
+    grid.innerHTML = `
+      <div class="empty">
+        <div class="big">🔍</div>
+        <p>Không tìm thấy nguồn dữ liệu nào phù hợp.</p>
+        <p style="font-size:13.5px;margin-top:6px">Thử từ khóa khác hoặc bỏ bộ lọc quốc gia.</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(cardHTML).join('');
+}
+
+/* Sự kiện tìm kiếm */
+search.addEventListener('input', () => {
+  clear.style.display = search.value ? 'block' : 'none';
+  render();
+});
+clear.addEventListener('click', () => {
+  search.value = '';
+  clear.style.display = 'none';
+  search.focus();
+  render();
+});
+
+/* Phím tắt */
+document.addEventListener('keydown', e => {
+  if (e.key === '/' && document.activeElement !== search){
+    e.preventDefault(); search.focus();
+  }
+  if (e.key === 'Escape' && document.activeElement === search){
+    search.value=''; clear.style.display='none'; render(); search.blur();
+  }
+});
+
+/* Khởi tạo */
+buildChips();
+render();
+</script>
+</body>
+</html>
